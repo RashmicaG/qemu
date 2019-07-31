@@ -30,6 +30,8 @@ int spapr_irq_msi_alloc(SpaprMachineState *spapr, uint32_t num, bool align,
 void spapr_irq_msi_free(SpaprMachineState *spapr, int irq, uint32_t num);
 void spapr_irq_msi_reset(SpaprMachineState *spapr);
 
+struct XiveTCTXMatch;
+
 typedef struct SpaprIrq {
     uint32_t    nr_irqs;
     uint32_t    nr_msis;
@@ -49,6 +51,10 @@ typedef struct SpaprIrq {
     void (*set_irq)(void *opaque, int srcno, int val);
     const char *(*get_nodename)(SpaprMachineState *spapr);
     void (*init_kvm)(SpaprMachineState *spapr, Error **errp);
+    int (*match_nvt)(SpaprMachineState *spapr, uint8_t format,
+                     uint8_t nvt_blk, uint32_t nvt_idx,
+                     bool cam_ignore, uint8_t priority,
+                     uint32_t logic_serv, struct XiveTCTXMatch *match);
 } SpaprIrq;
 
 extern SpaprIrq spapr_irq_xics;

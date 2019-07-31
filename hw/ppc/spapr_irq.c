@@ -262,6 +262,7 @@ SpaprIrq spapr_irq_xics = {
     .set_irq     = spapr_irq_set_irq_xics,
     .get_nodename = spapr_irq_get_nodename_xics,
     .init_kvm    = spapr_irq_init_kvm_xics,
+    .match_nvt   = NULL, /* should not be used */
 };
 
 /*
@@ -411,6 +412,18 @@ static void spapr_irq_init_kvm_xive(SpaprMachineState *spapr, Error **errp)
     }
 }
 
+static int spapr_irq_match_nvt_xive(SpaprMachineState *spapr, uint8_t format,
+                                    uint8_t nvt_blk, uint32_t nvt_idx,
+                                    bool cam_ignore, uint8_t priority,
+                                    uint32_t logic_serv, XiveTCTXMatch *match)
+{
+    XivePresenter *xptr = XIVE_PRESENTER(spapr->xive);
+    XivePresenterClass *xpc = XIVE_PRESENTER_GET_CLASS(xptr);
+
+    return xpc->match_nvt(xptr, format, nvt_blk, nvt_idx, cam_ignore,
+                          priority, logic_serv, match);
+}
+
 /*
  * XIVE uses the full IRQ number space. Set it to 8K to be compatible
  * with XICS.
@@ -436,6 +449,7 @@ SpaprIrq spapr_irq_xive = {
     .set_irq     = spapr_irq_set_irq_xive,
     .get_nodename = spapr_irq_get_nodename_xive,
     .init_kvm    = spapr_irq_init_kvm_xive,
+    .match_nvt   = spapr_irq_match_nvt_xive,
 };
 
 /*
@@ -590,6 +604,15 @@ static const char *spapr_irq_get_nodename_dual(SpaprMachineState *spapr)
     return spapr_irq_current(spapr)->get_nodename(spapr);
 }
 
+static int spapr_irq_match_nvt_dual(SpaprMachineState *spapr, uint8_t format,
+                                    uint8_t nvt_blk, uint32_t nvt_idx,
+                                    bool cam_ignore, uint8_t priority,
+                                    uint32_t logic_serv, XiveTCTXMatch *match)
+{
+    return spapr_irq_current(spapr)->match_nvt(spapr, format, nvt_blk, nvt_idx,
+                                     cam_ignore, priority, logic_serv, match);
+}
+
 /*
  * Define values in sync with the XIVE and XICS backend
  */
@@ -613,6 +636,7 @@ SpaprIrq spapr_irq_dual = {
     .set_irq     = spapr_irq_set_irq_dual,
     .get_nodename = spapr_irq_get_nodename_dual,
     .init_kvm    = NULL, /* should not be used */
+    .match_nvt   = spapr_irq_match_nvt_dual,
 };
 
 
@@ -828,4 +852,5 @@ SpaprIrq spapr_irq_xics_legacy = {
     .set_irq     = spapr_irq_set_irq_xics,
     .get_nodename = spapr_irq_get_nodename_xics,
     .init_kvm    = spapr_irq_init_kvm_xics,
+    .match_nvt   = NULL, /* should not be used */
 };
