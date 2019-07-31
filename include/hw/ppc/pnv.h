@@ -182,6 +182,19 @@ static inline bool pnv_is_power9(PnvMachineState *pnv)
     return pnv_chip_is_power9(pnv->chips[0]);
 }
 
+static inline PnvChip *pnv_get_chip(PnvMachineState *pnv, uint32_t chip_id)
+{
+    int i;
+
+    for (i = 0; i < pnv->num_chips; i++) {
+        PnvChip *chip = pnv->chips[i];
+        if (chip->chip_id == chip_id) {
+            return chip;
+        }
+    }
+    return NULL;
+}
+
 #define PNV_FDT_ADDR          0x01000000
 #define PNV_TIMEBASE_FREQ     512000000ULL
 

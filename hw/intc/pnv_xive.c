@@ -464,31 +464,37 @@ static int pnv_xive_match_nvt(XivePresenter *xptr, uint8_t format,
     return count;
 }
 
+/*
+ * The TIMA MMIO space is shared among the chips and to identify the
+ * chip from which the access is being done, we extract the chip id
+ * from the PIR.
+ */
+static PnvXive *pnv_xive_tm_get_xive(PowerPCCPU *cpu)
+{
+    PnvMachineState *pnv = PNV_MACHINE(qdev_get_machine());
+    PnvChip *chip;
+    PnvXive *xive;
+
+    chip = pnv_get_chip(pnv, cpu_chip_id(cpu));
+    assert(chip);
+    xive = &PNV9_CHIP(chip)->xive;
+
+    if (!pnv_xive_is_cpu_enabled(xive, cpu)) {
+        xive_error(xive, "IC: CPU %x is not enabled", cpu_pir(cpu));
+    }
+    return xive;
+}
+
 static XiveTCTX *pnv_xive_get_tctx(XiveRouter *xrtr, CPUState *cs)
 {
     PowerPCCPU *cpu = POWERPC_CPU(cs);
-    XiveTCTX *tctx = XIVE_TCTX(pnv_cpu_state(cpu)->intc);
-    PnvXive *xive = NULL;
-    CPUPPCState *env = &cpu->env;
-    int pir = env->spr_cb[SPR_PIR].default_value;
+    PnvXive *xive = pnv_xive_tm_get_xive(cpu);
 
-    /*
-     * Perform an extra check on the HW thread enablement.
-     *
-     * The TIMA is shared among the chips and to identify the chip
-     * from which the access is being done, we extract the chip id
-     * from the PIR.
-     */
-    xive = pnv_xive_get_ic((pir >> 8) & 0xf);
     if (!xive) {
         return NULL;
     }
 
-    if (!(xive->regs[PC_THREAD_EN_REG0 >> 3] & PPC_BIT(pir & 0x3f))) {
-        xive_error(PNV_XIVE(xrtr), "IC: CPU %x is not enabled", pir);
-    }
-
-    return tctx;
+    return XIVE_TCTX(pnv_cpu_state(cpu)->intc);
 }
 
 /*
