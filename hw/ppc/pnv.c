@@ -604,9 +604,21 @@ static void pnv_chip_power8_pic_print_info(PnvChip *chip, Monitor *mon)
 static void pnv_chip_power9_pic_print_info(PnvChip *chip, Monitor *mon)
 {
     Pnv9Chip *chip9 = PNV9_CHIP(chip);
+    int i, j;
 
     pnv_xive_pic_print_info(&chip9->xive, mon);
     pnv_psi_pic_print_info(&chip9->psi, mon);
+
+    for (i = 0; i < PNV9_CHIP_MAX_PEC; i++) {
+        PnvPhb4PecState *pec = &chip9->pecs[i];
+        for (j = 0; j < pec->num_stacks; j++) {
+            PnvPHB4 *phb = pec->stacks[j]->phb;
+
+            if (phb) {
+                pnv_phb4_pic_print_info(phb, mon);
+            }
+        }
+    }
 }
 
 static bool pnv_match_cpu(const char *default_type, const char *cpu_type)
