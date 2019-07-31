@@ -1322,6 +1322,35 @@ static void pnv_pic_print_info(InterruptStatsProvider *obj,
     }
 }
 
+static int pnv_xive_match_nvt(XiveFabric *xfb, uint8_t format,
+                               uint8_t nvt_blk, uint32_t nvt_idx,
+                               bool cam_ignore, uint8_t priority,
+                               uint32_t logic_serv,
+                               XiveTCTXMatch *match)
+{
+    PnvMachineState *pnv = PNV_MACHINE(xfb);
+    int total_count = 0;
+    int i;
+
+    for (i = 0; i < pnv->num_chips; i++) {
+        Pnv9Chip *chip9 = PNV9_CHIP(pnv->chips[i]);
+        XivePresenter *xptr = XIVE_PRESENTER(&chip9->xive);
+        XivePresenterClass *xpc = XIVE_PRESENTER_GET_CLASS(xptr);
+        int count;
+
+        count = xpc->match_nvt(xptr, format, nvt_blk, nvt_idx, cam_ignore,
+                               priority, logic_serv, match);
+
+        if (count < 0) {
+            return count;
+        }
+
+        total_count += count;
+    }
+
+    return total_count;
+}
+
 static void pnv_get_num_chips(Object *obj, Visitor *v, const char *name,
                               void *opaque, Error **errp)
 {
@@ -1385,9 +1414,11 @@ static void pnv_machine_power8_class_init(ObjectClass *oc, void *data)
 static void pnv_machine_power9_class_init(ObjectClass *oc, void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
+    XiveFabricClass *xfc = XIVE_FABRIC_CLASS(oc);
 
     mc->desc = "IBM PowerNV (Non-Virtualized) POWER9";
     mc->default_cpu_type = POWERPC_CPU_TYPE_NAME("power9_v2.0");
+    xfc->match_nvt = pnv_xive_match_nvt;
 
     mc->alias = "powernv";
 }
@@ -1435,6 +1466,7 @@ static void pnv_machine_class_init(ObjectClass *oc, void *data)
         .interfaces = (InterfaceInfo[]) {               \
             { TYPE_XICS_FABRIC },                       \
             { TYPE_INTERRUPT_STATS_PROVIDER },          \
+            { TYPE_XIVE_FABRIC },                       \
             { },                                        \
         },                                              \
     }

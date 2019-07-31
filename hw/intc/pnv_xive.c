@@ -390,6 +390,80 @@ static int pnv_xive_get_eas(XiveRouter *xrtr, uint8_t blk, uint32_t idx,
     return pnv_xive_vst_read(xive, VST_TSEL_IVT, blk, idx, eas);
 }
 
+static int cpu_pir(PowerPCCPU *cpu)
+{
+    CPUPPCState *env = &cpu->env;
+    return env->spr_cb[SPR_PIR].default_value;
+}
+
+static int cpu_chip_id(PowerPCCPU *cpu)
+{
+    int pir = cpu_pir(cpu);
+    return (pir >> 8) & 0x7f;
+}
+
+static bool pnv_xive_is_cpu_enabled(PnvXive *xive, PowerPCCPU *cpu)
+{
+    int pir = cpu_pir(cpu);
+    int thrd_id = pir & 0x7f;
+
+    return xive->regs[PC_THREAD_EN_REG0 >> 3] & PPC_BIT(thrd_id);
+}
+
+static bool pnv_xive_is_ignored(PnvChip *chip, CPUState *cs)
+{
+    return chip->chip_id != cpu_chip_id(POWERPC_CPU(cs));
+}
+
+#define PNV_CHIP_CPU_FOREACH(chip, cs)                                  \
+    CPU_FOREACH(cs)                                                     \
+        if (pnv_xive_is_ignored(chip, cs)) {} else
+
+static int pnv_xive_match_nvt(XivePresenter *xptr, uint8_t format,
+                              uint8_t nvt_blk, uint32_t nvt_idx,
+                              bool cam_ignore, uint8_t priority,
+                              uint32_t logic_serv, XiveTCTXMatch *match)
+{
+    PnvXive *xive = PNV_XIVE(xptr);
+    CPUState *cs;
+    int count = 0;
+
+    /*
+     * Loop on all CPUs of the machine and filter out the CPUs
+     * belonging to another chip.
+     */
+    PNV_CHIP_CPU_FOREACH(xive->chip, cs) {
+        PowerPCCPU *cpu = POWERPC_CPU(cs);
+        XiveTCTX *tctx = XIVE_TCTX(pnv_cpu_state(cpu)->intc);
+        int ring;
+
+        if (!pnv_xive_is_cpu_enabled(xive, cpu)) {
+            continue;
+        }
+
+        ring = xive_presenter_tctx_match(xptr, tctx, format, nvt_blk, nvt_idx,
+                                         cam_ignore, logic_serv);
+        /*
+         * Save the context and follow on to catch duplicates, that we
+         * don't support yet.
+         */
+        if (ring != -1) {
+            if (match->tctx) {
+                qemu_log_mask(LOG_GUEST_ERROR, "XIVE: already found a "
+                              "thread context NVT %x/%x\n",
+                              nvt_blk, nvt_idx);
+                return -1;
+            }
+
+            match->ring = ring;
+            match->tctx = tctx;
+            count++;
+        }
+    }
+
+    return count;
+}
+
 static XiveTCTX *pnv_xive_get_tctx(XiveRouter *xrtr, CPUState *cs)
 {
     PowerPCCPU *cpu = POWERPC_CPU(cs);
@@ -1795,6 +1869,7 @@ static void pnv_xive_class_init(ObjectClass *klass, void *data)
     PnvXScomInterfaceClass *xdc = PNV_XSCOM_INTERFACE_CLASS(klass);
     XiveRouterClass *xrc = XIVE_ROUTER_CLASS(klass);
     XiveNotifierClass *xnc = XIVE_NOTIFIER_CLASS(klass);
+    XivePresenterClass *xpc = XIVE_PRESENTER_CLASS(klass);
 
     xdc->dt_xscom = pnv_xive_dt_xscom;
 
@@ -1810,6 +1885,7 @@ static void pnv_xive_class_init(ObjectClass *klass, void *data)
     xrc->get_tctx = pnv_xive_get_tctx;
 
     xnc->notify = pnv_xive_notify;
+    xpc->match_nvt  = pnv_xive_match_nvt;
 };
 
 static const TypeInfo pnv_xive_info = {
