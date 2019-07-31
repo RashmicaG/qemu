@@ -339,14 +339,34 @@ static void xive_tm_set_os_pending(XivePresenter *xptr, XiveTCTX *tctx,
     xive_tctx_ipb_update(tctx, TM_QW1_OS, priority_to_ipb(value & 0xff));
 }
 
+static void xive_os_cam_decode(uint32_t cam, uint8_t *nvt_blk,
+                               uint32_t *nvt_idx, bool *vo)
+{
+    *nvt_blk = xive_nvt_blk(cam);
+    *nvt_idx = xive_nvt_idx(cam);
+    *vo = !!(cam & TM_QW1W2_VO);
+}
+
 static uint64_t xive_tm_pull_os_ctx(XivePresenter *xptr, XiveTCTX *tctx,
                                     hwaddr offset, unsigned size)
 {
-    uint32_t qw1w2_prev = xive_tctx_word2(&tctx->regs[TM_QW1_OS]);
-    uint32_t qw1w2;
+    uint32_t qw1w2 = xive_tctx_word2(&tctx->regs[TM_QW1_OS]);
+    uint32_t qw1w2_new;
+    uint32_t cam = be32_to_cpu(qw1w2);
+    uint8_t nvt_blk;
+    uint32_t nvt_idx;
+    bool vo;
 
-    qw1w2 = xive_set_field32(TM_QW1W2_VO, qw1w2_prev, 0);
-    memcpy(&tctx->regs[TM_QW1_OS + TM_WORD2], &qw1w2, 4);
+    xive_os_cam_decode(cam, &nvt_blk, &nvt_idx, &vo);
+
+    if (!vo) {
+        qemu_log_mask(LOG_GUEST_ERROR, "XIVE: pulling invalid NVT %x/%x !?\n",
+                      nvt_blk, nvt_idx);
+    }
+
+    /* Invalidate CAM line */
+    qw1w2_new = xive_set_field32(TM_QW1W2_VO, qw1w2, 0);
+    memcpy(&tctx->regs[TM_QW1_OS + TM_WORD2], &qw1w2_new, 4);
     return qw1w2;
 }
 
@@ -384,13 +404,15 @@ static void xive_tctx_need_resend(XiveRouter *xrtr, XiveTCTX *tctx,
 static void xive_tm_push_os_ctx(XivePresenter *xptr, XiveTCTX *tctx,
                                 hwaddr offset, uint64_t value, unsigned size)
 {
-    uint32_t qw1w2 = value;
-    uint8_t nvt_blk = xive_nvt_blk(qw1w2);
-    uint32_t nvt_idx = xive_nvt_idx(qw1w2);
-    bool vo = !!(qw1w2 & TM_QW1W2_VO);
+    uint32_t cam = value;
+    uint32_t qw1w2 = cpu_to_be32(cam);
+    uint8_t nvt_blk;
+    uint32_t nvt_idx;
+    bool vo;
+
+    xive_os_cam_decode(cam, &nvt_blk, &nvt_idx, &vo);
 
     /* First update the registers */
-    qw1w2 = cpu_to_be32(qw1w2);
     memcpy(&tctx->regs[TM_QW1_OS + TM_WORD2], &qw1w2, 4);
 
     /* Check the interrupt pending bits */
