@@ -460,6 +460,11 @@ static int pnv_xive_match_nvt(XivePresenter *xptr, uint8_t format,
     return count;
 }
 
+static uint8_t pnv_xive_get_block_id(XivePresenter *xptr)
+{
+    return pnv_xive_block_id(PNV_XIVE(xptr));
+}
+
 /*
  * The TIMA MMIO space is shared among the chips and to identify the
  * chip from which the access is being done, we extract the chip id
@@ -1918,6 +1923,7 @@ static void pnv_xive_class_init(ObjectClass *klass, void *data)
 
     xnc->notify = pnv_xive_notify;
     xpc->match_nvt  = pnv_xive_match_nvt;
+    xpc->get_block_id = pnv_xive_get_block_id;
 };
 
 static const TypeInfo pnv_xive_info = {
