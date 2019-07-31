@@ -30,6 +30,7 @@
 #include "hw/ppc/pnv_core.h"
 #include "hw/pci-host/pnv_phb3.h"
 #include "hw/pci-host/pnv_phb4.h"
+#include "hw/ppc/pnv_pnor.h"
 
 #define TYPE_PNV_CHIP "pnv-chip"
 #define PNV_CHIP(obj) OBJECT_CHECK(PnvChip, (obj), TYPE_PNV_CHIP)
@@ -179,6 +180,8 @@ typedef struct PnvMachineState {
 
     IPMIBmc      *bmc;
     Notifier     powerdown_notifier;
+
+    PnvPnor      *pnor;
 } PnvMachineState;
 
 static inline bool pnv_chip_is_power9(const PnvChip *chip)
