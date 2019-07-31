@@ -485,18 +485,6 @@ static PnvXive *pnv_xive_tm_get_xive(PowerPCCPU *cpu)
     return xive;
 }
 
-static XiveTCTX *pnv_xive_get_tctx(XiveRouter *xrtr, CPUState *cs)
-{
-    PowerPCCPU *cpu = POWERPC_CPU(cs);
-    PnvXive *xive = pnv_xive_tm_get_xive(cpu);
-
-    if (!xive) {
-        return NULL;
-    }
-
-    return XIVE_TCTX(pnv_cpu_state(cpu)->intc);
-}
-
 /*
  * The internal sources (IPIs) of the interrupt controller have no
  * knowledge of the XIVE chip on which they reside. Encode the block
@@ -1475,6 +1463,39 @@ static const MemoryRegionOps xive_tm_indirect_ops = {
     },
 };
 
+static void pnv_xive_tm_write(void *opaque, hwaddr offset,
+                              uint64_t value, unsigned size)
+{
+    PowerPCCPU *cpu = POWERPC_CPU(current_cpu);
+    PnvXive *xive = pnv_xive_tm_get_xive(cpu);
+    XiveTCTX *tctx = XIVE_TCTX(pnv_cpu_state(cpu)->intc);
+
+    xive_tctx_tm_write(XIVE_PRESENTER(xive), tctx, offset, value, size);
+}
+
+static uint64_t pnv_xive_tm_read(void *opaque, hwaddr offset, unsigned size)
+{
+    PowerPCCPU *cpu = POWERPC_CPU(current_cpu);
+    PnvXive *xive = pnv_xive_tm_get_xive(cpu);
+    XiveTCTX *tctx = XIVE_TCTX(pnv_cpu_state(cpu)->intc);
+
+    return xive_tctx_tm_read(XIVE_PRESENTER(xive), tctx, offset, size);
+}
+
+const MemoryRegionOps pnv_xive_tm_ops = {
+    .read = pnv_xive_tm_read,
+    .write = pnv_xive_tm_write,
+    .endianness = DEVICE_BIG_ENDIAN,
+    .valid = {
+        .min_access_size = 1,
+        .max_access_size = 8,
+    },
+    .impl = {
+        .min_access_size = 1,
+        .max_access_size = 8,
+    },
+};
+
 /*
  * Interrupt controller XSCOM region.
  */
@@ -1832,7 +1853,7 @@ static void pnv_xive_realize(DeviceState *dev, Error **errp)
                           "xive-pc", PNV9_XIVE_PC_SIZE);
 
     /* Thread Interrupt Management Area (Direct) */
-    memory_region_init_io(&xive->tm_mmio, OBJECT(xive), &xive_tm_ops,
+    memory_region_init_io(&xive->tm_mmio, OBJECT(xive), &pnv_xive_tm_ops,
                           xive, "xive-tima", PNV9_XIVE_TM_SIZE);
 
     qemu_register_reset(pnv_xive_reset, dev);
@@ -1888,7 +1909,6 @@ static void pnv_xive_class_init(ObjectClass *klass, void *data)
     xrc->write_end = pnv_xive_write_end;
     xrc->get_nvt = pnv_xive_get_nvt;
     xrc->write_nvt = pnv_xive_write_nvt;
-    xrc->get_tctx = pnv_xive_get_tctx;
 
     xnc->notify = pnv_xive_notify;
     xpc->match_nvt  = pnv_xive_match_nvt;
