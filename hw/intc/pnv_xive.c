@@ -408,6 +408,14 @@ static int cpu_chip_id(PowerPCCPU *cpu)
     CPU_FOREACH(cs)                                                     \
         if (chip->chip_id != cpu_chip_id(POWERPC_CPU(cs))) {} else
 
+static bool pnv_xive_is_cpu_enabled(PnvXive *xive, PowerPCCPU *cpu)
+{
+    int pir = cpu_pir(cpu);
+    int thrd_id = pir & 0x7f;
+
+    return xive->regs[PC_THREAD_EN_REG0 >> 3] & PPC_BIT(thrd_id);
+}
+
 static int pnv_xive_match_nvt(XivePresenter *xptr, uint8_t format,
                               uint8_t nvt_blk, uint32_t nvt_idx,
                               bool cam_ignore, uint8_t priority,
@@ -425,6 +433,10 @@ static int pnv_xive_match_nvt(XivePresenter *xptr, uint8_t format,
         PowerPCCPU *cpu = POWERPC_CPU(cs);
         XiveTCTX *tctx = XIVE_TCTX(pnv_cpu_state(cpu)->intc);
         int ring;
+
+        if (!pnv_xive_is_cpu_enabled(xive, cpu)) {
+            continue;
+        }
 
         /*
          * Check the thread context CAM lines and record matches.
