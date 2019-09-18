@@ -392,15 +392,36 @@ static int pnv_xive_get_eas(XiveRouter *xrtr, uint8_t blk, uint32_t idx,
     return pnv_xive_vst_read(xive, VST_TSEL_IVT, blk, idx, eas);
 }
 
+static int cpu_pir(PowerPCCPU *cpu)
+{
+    CPUPPCState *env = &cpu->env;
+    return env->spr_cb[SPR_PIR].default_value;
+}
+
+static int cpu_chip_id(PowerPCCPU *cpu)
+{
+    int pir = cpu_pir(cpu);
+    return (pir >> 8) & 0x7f;
+}
+
+#define PNV_CHIP_CPU_FOREACH(chip, cs)                                  \
+    CPU_FOREACH(cs)                                                     \
+        if (chip->chip_id != cpu_chip_id(POWERPC_CPU(cs))) {} else
+
 static int pnv_xive_match_nvt(XivePresenter *xptr, uint8_t format,
                               uint8_t nvt_blk, uint32_t nvt_idx,
                               bool cam_ignore, uint8_t priority,
                               uint32_t logic_serv, XiveTCTXMatch *match)
 {
+    PnvXive *xive = PNV_XIVE(xptr);
     CPUState *cs;
     int count = 0;
 
-    CPU_FOREACH(cs) {
+    /*
+     * Loop on all CPUs of the machine and filter out the CPUs
+     * belonging to another chip.
+     */
+    PNV_CHIP_CPU_FOREACH(xive->chip, cs) {
         PowerPCCPU *cpu = POWERPC_CPU(cs);
         XiveTCTX *tctx = XIVE_TCTX(pnv_cpu_state(cpu)->intc);
         int ring;
