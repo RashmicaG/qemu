@@ -30,6 +30,7 @@
 #include "hw/ppc/pnv_homer.h"
 #include "hw/ppc/pnv_xive.h"
 #include "hw/ppc/pnv_core.h"
+#include "hw/pci-host/pnv_phb3.h"
 
 #define TYPE_PNV_CHIP "pnv-chip"
 #define PNV_CHIP(obj) OBJECT_CHECK(PnvChip, (obj), TYPE_PNV_CHIP)
@@ -58,6 +59,8 @@ typedef struct PnvChip {
     uint64_t     cores_mask;
     void         *cores;
 
+    uint32_t     num_phbs;
+
     MemoryRegion xscom_mmio;
     MemoryRegion xscom;
     AddressSpace xscom_as;
@@ -79,6 +82,9 @@ typedef struct Pnv8Chip {
     Pnv8Psi      psi;
     PnvOCC       occ;
     PnvHomer     homer;
+
+#define PNV8_CHIP_PHB3_MAX 4
+    PnvPHB3      phbs[PNV8_CHIP_PHB3_MAX];
 } Pnv8Chip;
 
 #define TYPE_PNV9_CHIP "pnv9-chip"
@@ -107,6 +113,7 @@ typedef struct PnvChipClass {
     PnvChipType  chip_type;
     uint64_t     chip_cfam_id;
     uint64_t     cores_mask;
+    uint32_t     num_phbs;
 
     DeviceRealize parent_realize;
 
