@@ -211,7 +211,23 @@ static void write_boot_rom(DriveInfo *dinfo, hwaddr addr, size_t rom_size,
 
 static void ast2600_evb_reset(MachineState *machine)
 {
+    Error *err = NULL;
+    Object *obj;
+    AspeedSoCState *s;
+
     qemu_devices_reset();
+
+    obj = object_property_get_link(OBJECT(machine), "soc", &err);
+
+    if (obj == NULL) {
+        error_set(&err, ERROR_CLASS_DEVICE_NOT_FOUND,
+                  "SoC not found");
+        return;
+    }
+    s = ASPEED_SOC(obj);
+    /* init gpios */
+    object_property_set_bool(OBJECT(&s->gpio), true, "gpioA0", &error_abort);
+    object_property_set_bool(OBJECT(&s->gpio), true, "gpioA7", &error_abort);
 }
 
 static void aspeed_board_init_flashes(AspeedSMCState *s, const char *flashtype,
