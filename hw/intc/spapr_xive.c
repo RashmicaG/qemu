@@ -222,6 +222,35 @@ void spapr_xive_set_tctx_os_cam(XiveTCTX *tctx)
     memcpy(&tctx->regs[TM_QW1_OS + TM_WORD2], &nvt_cam, 4);
 }
 
+static void spapr_xive_tm_write(void *opaque, hwaddr offset,
+                          uint64_t value, unsigned size)
+{
+    XiveTCTX *tctx = spapr_cpu_state(POWERPC_CPU(current_cpu))->tctx;
+
+    xive_tctx_tm_write(XIVE_PRESENTER(opaque), tctx, offset, value, size);
+}
+
+static uint64_t spapr_xive_tm_read(void *opaque, hwaddr offset, unsigned size)
+{
+    XiveTCTX *tctx = spapr_cpu_state(POWERPC_CPU(current_cpu))->tctx;
+
+    return xive_tctx_tm_read(XIVE_PRESENTER(opaque), tctx, offset, size);
+}
+
+const MemoryRegionOps spapr_xive_tm_ops = {
+    .read = spapr_xive_tm_read,
+    .write = spapr_xive_tm_write,
+    .endianness = DEVICE_BIG_ENDIAN,
+    .valid = {
+        .min_access_size = 1,
+        .max_access_size = 8,
+    },
+    .impl = {
+        .min_access_size = 1,
+        .max_access_size = 8,
+    },
+};
+
 static void spapr_xive_end_reset(XiveEND *end)
 {
     memset(end, 0, sizeof(*end));
@@ -331,8 +360,8 @@ static void spapr_xive_realize(DeviceState *dev, Error **errp)
     qemu_register_reset(spapr_xive_reset, dev);
 
     /* TIMA initialization */
-    memory_region_init_io(&xive->tm_mmio, OBJECT(xive), &xive_tm_ops, xive,
-                          "xive.tima", 4ull << TM_SHIFT);
+    memory_region_init_io(&xive->tm_mmio, OBJECT(xive), &spapr_xive_tm_ops,
+                          xive, "xive.tima", 4ull << TM_SHIFT);
     sysbus_init_mmio(SYS_BUS_DEVICE(xive), &xive->tm_mmio);
 
     /*
