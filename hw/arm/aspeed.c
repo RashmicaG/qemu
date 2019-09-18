@@ -24,6 +24,7 @@
 #include "qemu/log.h"
 #include "sysemu/block-backend.h"
 #include "sysemu/sysemu.h"
+#include "sysemu/reset.h"
 #include "hw/loader.h"
 #include "qemu/error-report.h"
 #include "qemu/units.h"
@@ -206,6 +207,11 @@ static void write_boot_rom(DriveInfo *dinfo, hwaddr addr, size_t rom_size,
 
     rom_add_blob_fixed("aspeed.boot_rom", storage, rom_size, addr);
     g_free(storage);
+}
+
+static void ast2600_evb_reset(MachineState *machine)
+{
+    qemu_devices_reset();
 }
 
 static void aspeed_board_init_flashes(AspeedSMCState *s, const char *flashtype,
@@ -605,6 +611,7 @@ static void aspeed_machine_class_init(ObjectClass *oc, void *data)
 
     mc->desc = amc->desc;
     mc->init = aspeed_machine_init;
+    mc->reset = amc->reset;
     mc->max_cpus = ASPEED_CPUS_NUM;
     mc->no_floppy = 1;
     mc->no_cdrom = 1;
@@ -713,6 +720,7 @@ static void ast2600_evb_init(ObjectClass *oc, void *data)
     amc->spi_model = "mx25l25635e";
     amc->num_cs    = 1;
     amc->i2c_init  = ast2600_evb_i2c_init;
+    amc->reset     = ast2600_evb_reset;
     aspeed_machine_class_init(oc, data);
 }
 

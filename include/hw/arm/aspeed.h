@@ -40,6 +40,7 @@ typedef struct AspeedMachineClass {
     uint32_t num_cs;
     void (*i2c_init)(AspeedBoardState *bmc);
     uint32_t ram;
+    void (*reset)(MachineState *state);
 } AspeedMachineClass;
 
 
