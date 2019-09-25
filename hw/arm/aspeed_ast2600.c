@@ -221,6 +221,9 @@ static void aspeed_soc_ast2600_init(Object *obj)
 
     sysbus_init_child_obj(obj, "ibt", OBJECT(&s->ibt), sizeof(s->ibt),
                           TYPE_ASPEED_IBT);
+
+    sysbus_init_child_obj(obj, "pwm", OBJECT(&s->pwm), sizeof(s->pwm),
+                          TYPE_ASPEED_PWM);
 }
 
 /*
@@ -527,6 +530,16 @@ static void aspeed_soc_ast2600_realize(DeviceState *dev, Error **errp)
     sysbus_mmio_map(SYS_BUS_DEVICE(&s->ibt), 0, sc->memmap[ASPEED_IBT]);
     sysbus_connect_irq(SYS_BUS_DEVICE(&s->ibt), 0,
                        aspeed_soc_get_irq(s, ASPEED_LPC));
+
+    /* PWM */
+    object_property_set_bool(OBJECT(&s->pwm), true, "realized", &err);
+    if (err) {
+        error_propagate(errp, err);
+        return;
+    }
+    sysbus_mmio_map(SYS_BUS_DEVICE(&s->pwm), 0, sc->memmap[ASPEED_PWM]);
+    sysbus_connect_irq(SYS_BUS_DEVICE(&s->pwm), 0,
+                       aspeed_soc_get_irq(s, ASPEED_PWM));
 }
 
 static void aspeed_soc_ast2600_class_init(ObjectClass *oc, void *data)
