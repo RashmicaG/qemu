@@ -95,6 +95,9 @@ struct AspeedBoardState {
 /* Tacoma hardware value: (QEMU prototype) */
 #define TACOMA_BMC_HW_STRAP1 AST2500_EVB_HW_STRAP1
 
+/* Rainier hardware value: (QEMU prototype) */
+#define RAINIER_BMC_HW_STRAP1 AST2500_EVB_HW_STRAP1
+
 /*
  * The max ram region is for firmwares that scan the address space
  * with load/store to guess how much RAM the SoC has.
@@ -494,6 +497,78 @@ static void tacoma_bmc_i2c_init(AspeedBoardState *bmc)
     /* Bus 11: TODO ucd90160@64 */
 }
 
+static void rainier_bmc_i2c_init(AspeedBoardState *bmc)
+{
+    AspeedSoCState *soc = &bmc->soc;
+
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 3), "ibm-cffps",
+                     0x68);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 3), "ibm-cffps",
+                     0x69);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 3), "ibm-cffps",
+                     0x6a);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 3), "ibm-cffps",
+                     0x6b);
+
+    /* The rainier expects a TMP275 but a TMP105 is compatible */
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 4), TYPE_TMP105,
+                     0x48);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 4), TYPE_TMP105,
+                     0x49);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 4), TYPE_TMP105,
+                     0x4a);
+
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 5), TYPE_TMP105,
+                     0x48);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 5), TYPE_TMP105,
+                     0x49);
+
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 6), TYPE_TMP105,
+                     0x48);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 6), TYPE_TMP105,
+                     0x4a);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 6), TYPE_TMP105,
+                     0x4b);
+
+    /* Bus 7: TODO dps310@76 */
+    /* Bus 7: TODO max31785@52 */
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 7), "pca9552", 0x60);
+    /* Bus 7: TODO si7021-a20@20 */
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 7), TYPE_TMP105,
+                     0x48);
+
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 8), TYPE_TMP105,
+                     0x48);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 8), TYPE_TMP105,
+                     0x4a);
+    /* Bus 8: ucd90320@11 */
+    /* Bus 8: ucd90320@b */
+    /* Bus 8: ucd90320@c */
+
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 9), "ir35221", 0x42);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 9), "ir35221", 0x43);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 9), "ir35221", 0x44);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 9), "ir35221", 0x72);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 9), "ir35221", 0x73);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 9), "ir35221", 0x74);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 9), "tmp423", 0x4c);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 9), "tmp423", 0x4d);
+
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 10), "ir35221", 0x42);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 10), "ir35221", 0x43);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 10), "ir35221", 0x44);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 10), "ir35221", 0x72);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 10), "ir35221", 0x73);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 10), "ir35221", 0x74);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 10), "tmp423", 0x4c);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 10), "tmp423", 0x4d);
+
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 11), TYPE_TMP105,
+                     0x48);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 11), TYPE_TMP105,
+                     0x49);
+}
+
 static void aspeed_machine_init(MachineState *machine)
 {
     AspeedMachineClass *amc = ASPEED_MACHINE_GET_CLASS(machine);
@@ -625,6 +700,16 @@ static const AspeedBoardConfig aspeed_boards[] = {
         .spi_model = "mx66l1g45g",
         .num_cs    = 2,
         .i2c_init  = tacoma_bmc_i2c_init,
+        .ram       = 2 * GiB,
+    }, {
+        .name      = MACHINE_TYPE_NAME("rainier-bmc"),
+        .desc      = "Aspeed AST2600 EVB (Cortex A7)",
+        .soc_name  = "ast2600-a0",
+        .hw_strap1 = RAINIER_BMC_HW_STRAP1,
+        .fmc_model = "mx25l25635e",
+        .spi_model = "mx66l1g45g",
+        .num_cs    = 2,
+        .i2c_init  = rainier_bmc_i2c_init,
         .ram       = 2 * GiB,
     },
 };
