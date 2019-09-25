@@ -77,7 +77,7 @@ common-obj-$(CONFIG_ARMSSE_MHU) += armsse-mhu.o
 common-obj-$(CONFIG_PVPANIC) += pvpanic.o
 common-obj-$(CONFIG_AUX) += auxbus.o
 common-obj-$(CONFIG_ASPEED_SOC) += aspeed_xdma.o
-common-obj-$(CONFIG_ASPEED_SOC) += aspeed_scu.o aspeed_sdmc.o
+common-obj-$(CONFIG_ASPEED_SOC) += aspeed_scu.o aspeed_sdmc.o aspeed_ibt.o
 common-obj-$(CONFIG_MSF2) += msf2-sysreg.o
 common-obj-$(CONFIG_NRF51_SOC) += nrf51_rng.o
 
