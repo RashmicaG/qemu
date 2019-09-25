@@ -57,6 +57,8 @@ static const hwaddr aspeed_soc_ast2600_memmap[] = {
     [ASPEED_UART1]     = 0x1E783000,
     [ASPEED_UART5]     = 0x1E784000,
     [ASPEED_VUART]     = 0x1E787000,
+    [ASPEED_FSI1]      = 0x1E79B000,
+    [ASPEED_FSI2]      = 0x1E79B100,
     [ASPEED_SDRAM]     = 0x80000000,
 };
 
@@ -97,7 +99,8 @@ static const int aspeed_soc_ast2600_irqmap[] = {
     [ASPEED_ETH2]      = 3,
     [ASPEED_ETH3]      = 32,
     [ASPEED_ETH4]      = 33,
-
+    [ASPEED_FSI1]      = 100,
+    [ASPEED_FSI2]      = 101,
 };
 
 static qemu_irq aspeed_soc_get_irq(AspeedSoCState *s, int ctrl)
@@ -227,6 +230,9 @@ static void aspeed_soc_ast2600_init(Object *obj)
 
     sysbus_init_child_obj(obj, "lpc", OBJECT(&s->lpc), sizeof(s->lpc),
                            TYPE_ASPEED_LPC);
+
+    sysbus_init_child_obj(obj, "fsi[*]", OBJECT(&s->fsi[0]),
+                          sizeof(s->fsi[0]), TYPE_ASPEED_APB2OPB);
 }
 
 /*
@@ -552,6 +558,17 @@ static void aspeed_soc_ast2600_realize(DeviceState *dev, Error **errp)
     }
     sysbus_mmio_map(SYS_BUS_DEVICE(&s->lpc), 0, sc->memmap[ASPEED_LPC]);
     /* LPC IRQ in use by the iBT sub controller */
+
+    /* FSI */
+    object_property_set_bool(OBJECT(&s->fsi[0]), true, "realized", &err);
+    if (err) {
+        error_propagate(errp, err);
+        return;
+    }
+    sysbus_mmio_map(SYS_BUS_DEVICE(&s->fsi[0]), 0,
+                    sc->memmap[ASPEED_FSI1]);
+    sysbus_connect_irq(SYS_BUS_DEVICE(&s->fsi[0]), 0,
+                       aspeed_soc_get_irq(s, ASPEED_FSI1));
 }
 
 static void aspeed_soc_ast2600_class_init(ObjectClass *oc, void *data)

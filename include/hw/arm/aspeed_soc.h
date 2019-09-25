@@ -30,6 +30,7 @@
 #include "hw/misc/aspeed_ibt.h"
 #include "hw/misc/aspeed_pwm.h"
 #include "hw/misc/aspeed_lpc.h"
+#include "hw/fsi/aspeed-apb2opb.h"
 
 #define ASPEED_SPIS_NUM  2
 #define ASPEED_WDTS_NUM  4
@@ -64,6 +65,7 @@ typedef struct AspeedSoCState {
     AspeedIBTState ibt;
     AspeedPWMState pwm;
     AspeedLPCState lpc;
+    AspeedAPB2OPBState fsi[2];
 } AspeedSoCState;
 
 #define TYPE_ASPEED_SOC "aspeed-soc"
@@ -133,6 +135,8 @@ enum {
     ASPEED_MII4,
     ASPEED_SDRAM,
     ASPEED_XDMA,
+    ASPEED_FSI1,
+    ASPEED_FSI2,
 };
 
 #endif /* ASPEED_SOC_H */
