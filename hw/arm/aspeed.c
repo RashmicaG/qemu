@@ -92,6 +92,9 @@ struct AspeedBoardState {
 #define AST2600_EVB_HW_STRAP1 0x000000C0
 #define AST2600_EVB_HW_STRAP2 0x00000003
 
+/* Tacoma hardware value: (QEMU prototype) */
+#define TACOMA_BMC_HW_STRAP1 AST2500_EVB_HW_STRAP1
+
 /*
  * The max ram region is for firmwares that scan the address space
  * with load/store to guess how much RAM the SoC has.
@@ -455,6 +458,42 @@ static void witherspoon_bmc_i2c_init(AspeedBoardState *bmc)
                      0x60);
 }
 
+static void tacoma_bmc_i2c_init(AspeedBoardState *bmc)
+{
+    AspeedSoCState *soc = &bmc->soc;
+    uint8_t *eeprom_buf = g_malloc0(8 * 1024);
+
+    /* Bus 3: TODO bmp280@77 */
+    /* Bus 3: TODO max31785@52 */
+    /* Bus 3: TODO dps310@76 */
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 3), "pca9552", 0x60);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 3), "ibm-cffps",
+                     0x68);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 3), "ibm-cffps",
+                     0x69);
+
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 4), "tmp423", 0x4c);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 4), "ir35221", 0x70);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 4), "ir35221", 0x71);
+
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 5), "tmp423", 0x4c);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 5), "ir35221", 0x70);
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 5), "ir35221", 0x71);
+
+    /* The tacoma expects a TMP275 but a TMP105 is compatible */
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 9), TYPE_TMP105,
+                     0x4a);
+
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 11), "pca9552",
+                     0x60);
+    /* The tacoma expects Epson RX8900 RTC but a ds1338 is compatible */
+    i2c_create_slave(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 11), "ds1338",
+                     0x32);
+    smbus_eeprom_init_one(aspeed_i2c_get_bus(DEVICE(&soc->i2c), 11), 0x51,
+                          eeprom_buf);
+    /* Bus 11: TODO ucd90160@64 */
+}
+
 static void aspeed_machine_init(MachineState *machine)
 {
     AspeedMachineClass *amc = ASPEED_MACHINE_GET_CLASS(machine);
@@ -576,6 +615,16 @@ static const AspeedBoardConfig aspeed_boards[] = {
         .spi_model = "mx66u51235f",
         .num_cs    = 1,
         .i2c_init  = ast2600_evb_i2c_init,
+        .ram       = 2 * GiB,
+    }, {
+        .name      = MACHINE_TYPE_NAME("tacoma-bmc"),
+        .desc      = "Aspeed AST2600 EVB (Cortex A7)",
+        .soc_name  = "ast2600-a0",
+        .hw_strap1 = TACOMA_BMC_HW_STRAP1,
+        .fmc_model = "mx25l25635e",
+        .spi_model = "mx66l1g45g",
+        .num_cs    = 2,
+        .i2c_init  = tacoma_bmc_i2c_init,
         .ram       = 2 * GiB,
     },
 };
