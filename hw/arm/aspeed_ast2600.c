@@ -123,6 +123,8 @@ static void aspeed_soc_ast2600_init(Object *obj)
         object_initialize_child(obj, "cpu[*]", OBJECT(&s->cpu[i]),
                                 sizeof(s->cpu[i]), sc->cpu_type,
                                 &error_abort, NULL);
+        qdev_prop_set_uint64(DEVICE(&s->cpu[i]), "cntfrq",
+                             800 * 1000 * 1000);
     }
 
     snprintf(typename, sizeof(typename), "aspeed.scu-%s", socname);
